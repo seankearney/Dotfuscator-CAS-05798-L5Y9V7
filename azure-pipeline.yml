@@ -1,0 +1,73 @@
+trigger:
+- master
+
+pool:
+  vmImage: windows-latest
+
+variables:
+- group: Obfuscation
+- name: buildConfiguration
+  value: 'Release'  
+
+steps:
+ 
+- task: PowerShell@2
+  displayName: Save Dotfuscator License to Env
+  inputs:
+    targetType: 'inline'
+    script: |
+      Write-Host "Making the key available as an environment variable."
+      Write-Host "##vso[task.setvariable variable=DOTFUSCATOR_LICENSE;]$(PreEmptiveDotfuscatorLicenseKey)"
+
+- task: NuGetToolInstaller@1
+
+- task: NuGetCommand@2
+  displayName: 'Install Dotfuscator'
+  inputs:
+    command: custom
+    arguments: install PreEmptive.Protection.Dotfuscator.Pro.Eval -Version 6.2.0 -OutputDirectory "$(Build.Repository.LocalPath)\PreEmptive" -ExcludeVersion  -ConfigFile ./NuGet.config"
+
+- task: DotNetCoreCLI@2
+  displayName: 'dotnet restore'
+  inputs:
+    command: 'restore'
+    feedsToUse: 'config'
+    nugetConfigPath: 'nuget.config'
+    feedRestore: true
+    verbosityRestore: 'normal'
+
+- task: DotNetCoreCLI@2
+  displayName: 'Run tests'
+  inputs:
+    command: 'test'
+    arguments: '-p:DotfuscatorMSBuildDir="$(Build.Repository.LocalPath)\PreEmptive\PreEmptive.Protection.Dotfuscator.Pro.Eval\tools\msbuilddir" --no-restore'
+
+- task: DotNetCoreCLI@2
+  displayName: "Publish Windows"
+  inputs:
+    command: 'publish'
+    publishWebProjects: false
+    projects: './Obfuscation/Obfuscation.csproj'
+    arguments: '-c $(BuildConfiguration) -o publish/win -r win-x64 -v normal -p:DotfuscatorMSBuildDir="$(Build.Repository.LocalPath)\PreEmptive\PreEmptive.Protection.Dotfuscator.Pro.Eval\tools\msbuilddir" --self-contained --no-restore'
+    zipAfterPublish: false
+
+#- task: DotNetCoreCLI@2
+#  displayName: "Publish Mac"
+#  inputs:
+#    command: 'publish'
+#    publishWebProjects: false
+#    projects: './Obfuscation/Obfuscation.csproj'
+#    publishWebProjects: False
+#    arguments: '-c $(BuildConfiguration) -o publish/mac -r osx-x64 -p:DotfuscatorMSBuildDir="$(Build.Repository.LocalPath)\PreEmptive\PreEmptive.Protection.Dotfuscator.Pro.Eval\tools\msbuilddir" --self-contained --no-restore'
+#    zipAfterPublish: false
+
+- task: CopyFiles@2
+  inputs:
+    contents: 'publish/**'
+    targetFolder: $(Build.ArtifactStagingDirectory)
+
+- task: PublishBuildArtifacts@1
+  displayName: "Upload Artifacts"
+  inputs:
+    pathtoPublish: '$(Build.ArtifactStagingDirectory)'
+    artifactName: 'drop'

@@ -1,0 +1,10 @@
+<Project>
+    <!-- Import environment-specific properties, which may include DotfuscatorMSBuildDir -->
+    <Import Project="$([System.Environment]::GetFolderPath(SpecialFolder.UserProfile))\.dotfuscator.user.props" 
+            Condition="Exists('$([System.Environment]::GetFolderPath(SpecialFolder.UserProfile))\.dotfuscator.user.props')"/>
+
+    <!-- Set a default value for the DotfuscatorMSBuildDir property -->
+    <PropertyGroup>
+      <DotfuscatorMSBuildDir Condition="'$(DotfuscatorMSBuildDir)' == ''">$(MSBuildProgramFiles32)\MSBuild\PreEmptive\Dotfuscator\6</DotfuscatorMSBuildDir>
+    </PropertyGroup> 
+</Project>
